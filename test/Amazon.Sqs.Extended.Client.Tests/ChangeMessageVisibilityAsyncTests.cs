@@ -10,9 +10,7 @@ public class ChangeMessageVisibilityAsyncTests : AmazonSqsExtendedClientTestsBas
     {
         // arrange
         const string originalReceiptHandle = "originalReceiptHandle";
-        var receiptHandle = isS3ReceiptHandle
-            ? $"{SqsExtendedClientConstants.S3BucketNameMarker}{SqsExtendedClientConstants.S3BucketNameMarker}{SqsExtendedClientConstants.S3KeyMarker}{SqsExtendedClientConstants.S3KeyMarker}{originalReceiptHandle}"
-            : originalReceiptHandle;
+        var receiptHandle = GenerateReceiptHandle(isS3ReceiptHandle, originalReceiptHandle);
 
         var request = new ChangeMessageVisibilityRequest("url", receiptHandle, 120);
 

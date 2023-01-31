@@ -61,12 +61,8 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
     public override async Task<DeleteMessageResponse> DeleteMessageAsync(DeleteMessageRequest request,
         CancellationToken cancellationToken = new())
     {
-        if (!_extendedClientConfiguration.LargePayloadSupport || !IsS3ReceiptHandle(request.ReceiptHandle))
-        {
-            return await base.DeleteMessageAsync(request, cancellationToken);
-        }
-
-        if (_extendedClientConfiguration.CleanupS3Payload)
+        if (_extendedClientConfiguration is { LargePayloadSupport: true, CleanupS3Payload: true } &&
+            IsS3ReceiptHandle(request.ReceiptHandle))
         {
             var payloadS3Pointer = GetMessagePointerFromS3ReceiptHandle(request.ReceiptHandle);
             await DeletePayloadFromS3Async(payloadS3Pointer, cancellationToken);
@@ -80,14 +76,10 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
     public override async Task<DeleteMessageBatchResponse> DeleteMessageBatchAsync(DeleteMessageBatchRequest request,
         CancellationToken cancellationToken = new())
     {
-        if (!_extendedClientConfiguration.LargePayloadSupport)
-        {
-            return await base.DeleteMessageBatchAsync(request, cancellationToken);
-        }
-
         foreach (var entry in request.Entries)
         {
-            if (_extendedClientConfiguration.CleanupS3Payload && IsS3ReceiptHandle(entry.ReceiptHandle))
+            if (_extendedClientConfiguration is { LargePayloadSupport: true, CleanupS3Payload: true } &&
+                IsS3ReceiptHandle(entry.ReceiptHandle))
             {
                 var payloadS3Pointer = GetMessagePointerFromS3ReceiptHandle(entry.ReceiptHandle);
                 await DeletePayloadFromS3Async(payloadS3Pointer, cancellationToken);
@@ -275,21 +267,20 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
 
     internal static string EmbedS3PointerInReceiptHandle(string receiptHandle, PayloadS3Pointer payloadS3Pointer)
     {
-        var receiptHandleBuilder = new StringBuilder(SqsExtendedClientConstants.S3BucketNameMarker);
-        receiptHandleBuilder.Append(payloadS3Pointer.S3BucketName);
-        receiptHandleBuilder.Append(SqsExtendedClientConstants.S3BucketNameMarker);
-        receiptHandleBuilder.Append(SqsExtendedClientConstants.S3KeyMarker);
-        receiptHandleBuilder.Append(payloadS3Pointer.S3Key);
-        receiptHandleBuilder.Append(SqsExtendedClientConstants.S3KeyMarker);
-        receiptHandleBuilder.Append(receiptHandle);
-
-        return receiptHandleBuilder.ToString();
+        return new StringBuilder(SqsExtendedClientConstants.S3BucketNameMarker)
+            .Append(payloadS3Pointer.S3BucketName)
+            .Append(SqsExtendedClientConstants.S3BucketNameMarker)
+            .Append(SqsExtendedClientConstants.S3KeyMarker)
+            .Append(payloadS3Pointer.S3Key)
+            .Append(SqsExtendedClientConstants.S3KeyMarker)
+            .Append(receiptHandle)
+            .ToString();
     }
 
     internal static string GetFromReceiptHandleByMarker(string receiptHandle, string marker)
     {
         var valueStart = receiptHandle.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
-        var valueEnd = receiptHandle.IndexOf(marker, valueStart + 1, StringComparison.Ordinal);
+        var valueEnd = receiptHandle.IndexOf(marker, valueStart, StringComparison.Ordinal);
         return receiptHandle.Substring(valueStart, valueEnd - valueStart);
     }
 
