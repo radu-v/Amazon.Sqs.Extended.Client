@@ -20,11 +20,9 @@ public class DeleteMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         bool isS3ReceiptHandle, bool isLargePayloadEnabled, bool isCleanupS3PayloadEnabled, bool shouldCallS3)
     {
         // arrange
-        const string bucketName = "bucket";
-        const string s3Key = "s3key";
-        var receiptHandle1 = GenerateReceiptHandle(isS3ReceiptHandle, "originalReceiptHandle1", bucketName, s3Key);
-        var receiptHandle2 = GenerateReceiptHandle(isS3ReceiptHandle, "originalReceiptHandle2", bucketName, s3Key);
-        var request = new DeleteMessageBatchRequest("url", new List<DeleteMessageBatchRequestEntry>
+        var receiptHandle1 = GenerateReceiptHandle(isS3ReceiptHandle, "originalReceiptHandle1", S3BucketName, S3Key);
+        var receiptHandle2 = GenerateReceiptHandle(isS3ReceiptHandle, "originalReceiptHandle2", S3BucketName, S3Key);
+        var request = new DeleteMessageBatchRequest(SqsQueueUrl, new List<DeleteMessageBatchRequestEntry>
         {
             new("1", receiptHandle1),
             new("2", receiptHandle2)
@@ -34,10 +32,10 @@ public class DeleteMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
 
         if (isLargePayloadEnabled)
         {
-            config = config.WithLargePayloadSupportEnabled(S3Sub, bucketName, isCleanupS3PayloadEnabled);
+            config = config.WithLargePayloadSupportEnabled(S3Sub, S3BucketName, isCleanupS3PayloadEnabled);
         }
 
-        var client = new AmazonSqsExtendedClient(SqsClientSub, config);
+        var client = new AmazonSqsExtendedClient(SqsClientSub, config, DummyLogger);
 
         // act
         await client.DeleteMessageBatchAsync(request);
@@ -49,7 +47,7 @@ public class DeleteMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
 
             if (shouldCallS3)
             {
-                await S3Sub.Received(2).DeleteObjectAsync(bucketName, s3Key, Arg.Any<CancellationToken>());
+                await S3Sub.Received(2).DeleteObjectAsync(S3BucketName, S3Key, Arg.Any<CancellationToken>());
             }
             else
             {

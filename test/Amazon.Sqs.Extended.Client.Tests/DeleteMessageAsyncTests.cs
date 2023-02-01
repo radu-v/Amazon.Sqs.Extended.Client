@@ -20,18 +20,16 @@ public class DeleteMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         bool isS3ReceiptHandle, bool isLargePayloadEnabled, bool isCleanupS3PayloadEnabled, bool shouldCallS3)
     {
         // arrange
-        const string bucketName = "bucket";
-        const string s3Key = "s3key";
-        var receiptHandle = GenerateReceiptHandle(isS3ReceiptHandle, "originalReceiptHandle", bucketName, s3Key);
-        var request = new DeleteMessageRequest("url", receiptHandle);
+        var receiptHandle = GenerateReceiptHandle(isS3ReceiptHandle, "originalReceiptHandle", S3BucketName, S3Key);
+        var request = new DeleteMessageRequest(SqsQueueUrl, receiptHandle);
         var config = ExtendedClientConfiguration;
 
         if (isLargePayloadEnabled)
         {
-            config = config.WithLargePayloadSupportEnabled(S3Sub, bucketName, isCleanupS3PayloadEnabled);
+            config = config.WithLargePayloadSupportEnabled(S3Sub, S3BucketName, isCleanupS3PayloadEnabled);
         }
 
-        var client = new AmazonSqsExtendedClient(SqsClientSub, config);
+        var client = new AmazonSqsExtendedClient(SqsClientSub, config, DummyLogger);
 
         // act
         await client.DeleteMessageAsync(request);
@@ -43,7 +41,7 @@ public class DeleteMessageAsyncTests : AmazonSqsExtendedClientTestsBase
 
             if (shouldCallS3)
             {
-                await S3Sub.Received(1).DeleteObjectAsync(bucketName, s3Key, Arg.Any<CancellationToken>());
+                await S3Sub.Received(1).DeleteObjectAsync(S3BucketName, S3Key, Arg.Any<CancellationToken>());
             }
             else
             {

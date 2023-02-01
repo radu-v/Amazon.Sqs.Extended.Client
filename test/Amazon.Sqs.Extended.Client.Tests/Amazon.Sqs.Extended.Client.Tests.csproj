@@ -9,6 +9,10 @@
    </PropertyGroup>
 
    <ItemGroup>
+      <AssemblyAttribute Include="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage" />
+   </ItemGroup>
+
+   <ItemGroup>
       <PackageReference Include="AWSSDK.S3" Version="3.7.102" />
       <PackageReference Include="AWSSDK.SQS" Version="3.7.100.62" />
       <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />

@@ -40,7 +40,8 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         // arrange
         var messageRequest = new SendMessageRequest(SqsQueueUrl, SmallMessageBody);
         var client = new AmazonSqsExtendedClient(SqsClientSub,
-            ExtendedClientConfiguration.WithLargePayloadSupportEnabled(S3Sub, S3BucketName).WithAlwaysThroughS3(true));
+            ExtendedClientConfiguration.WithLargePayloadSupportEnabled(S3Sub, S3BucketName).WithAlwaysThroughS3(true),
+            DummyLogger);
 
         // act
         await client.SendMessageAsync(messageRequest);

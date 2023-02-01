@@ -1,8 +1,10 @@
-﻿using Amazon.S3;
+﻿using System.Diagnostics.CodeAnalysis;
+using Amazon.S3;
 using Amazon.Sqs.Extended.Client.Models;
 
 namespace Amazon.Sqs.Extended.Client.Extensions;
 
+[ExcludeFromCodeCoverage]
 public static class ExtendedClientConfigurationExtensions
 {
     public static ExtendedClientConfiguration WithLargePayloadSupportEnabled(this ExtendedClientConfiguration config,

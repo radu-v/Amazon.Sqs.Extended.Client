@@ -4,18 +4,20 @@ using Amazon.SQS;
 using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.Sqs.Extended.Client.Providers;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace Amazon.Sqs.Extended.Client.Tests;
 
 public class AmazonSqsExtendedClientTestsBase
 {
-    public const string S3BucketName = "test-bucket-name";
-    public const string SqsQueueUrl = "test-queue-url";
-    public const int LessThanSqsSizeLimit = 3;
-    public const int SqsSizeLimit = 100;
-    public const int MoreThanSqsSizeLimit = SqsSizeLimit + 1;
-    public const string DefaultS3Key = "12345678901234567890123456789012";
+    protected const string S3BucketName = "test-bucket-name";
+    protected const string S3Key = "S3Key";
+    protected const string SqsQueueUrl = "test-queue-url";
+    protected const int LessThanSqsSizeLimit = 3;
+    protected const int SqsSizeLimit = 100;
+    protected const int MoreThanSqsSizeLimit = SqsSizeLimit + 1;
+    protected const string DefaultS3Key = "12345678901234567890123456789012";
 
     protected IAmazonS3 S3Sub { get; private set; } = null!;
     protected IAmazonSQS SqsClientSub { get; private set; } = null!;
@@ -26,9 +28,12 @@ public class AmazonSqsExtendedClientTestsBase
     protected string LargeMessageBody { get; private set; } = null!;
     protected string SmallMessageBody { get; private set; } = null!;
 
+    protected ILogger<AmazonSqsExtendedClient> DummyLogger = null!;
+
     [OneTimeSetUp]
     public void OneTimeSetup()
     {
+        DummyLogger = Substitute.For<ILogger<AmazonSqsExtendedClient>>();
         LargeMessageBody = GenerateStringWithLength(MoreThanSqsSizeLimit);
         SmallMessageBody = GenerateStringWithLength(LessThanSqsSizeLimit);
     }
@@ -47,11 +52,12 @@ public class AmazonSqsExtendedClientTestsBase
 
         ExtendedSqsWithLargePayloadEnabled =
             new AmazonSqsExtendedClient(SqsClientSub,
-                ExtendedClientConfiguration.WithLargePayloadSupportEnabled(S3Sub, S3BucketName), S3KeyProviderSub);
+                ExtendedClientConfiguration.WithLargePayloadSupportEnabled(S3Sub, S3BucketName), S3KeyProviderSub,
+                DummyLogger);
 
         ExtendedSqsWithLargePayloadDisabled =
             new AmazonSqsExtendedClient(SqsClientSub, ExtendedClientConfiguration.WithLargePayloadSupportDisabled(),
-                S3KeyProviderSub);
+                S3KeyProviderSub, DummyLogger);
     }
 
 

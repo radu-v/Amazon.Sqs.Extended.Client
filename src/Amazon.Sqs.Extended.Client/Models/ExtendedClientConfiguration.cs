@@ -1,7 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using Amazon.S3;
 
 namespace Amazon.Sqs.Extended.Client.Models;
 
+[ExcludeFromCodeCoverage(Justification = "Model")]
 public record ExtendedClientConfiguration
 {
     public bool CleanupS3Payload { get; init; }

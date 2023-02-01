@@ -14,20 +14,20 @@ public class ChangeMessageVisibilityBatchAsyncTests : AmazonSqsExtendedClientTes
         const string s3ReceiptHandle =
             $"{SqsExtendedClientConstants.S3BucketNameMarker}{SqsExtendedClientConstants.S3BucketNameMarker}{SqsExtendedClientConstants.S3KeyMarker}{SqsExtendedClientConstants.S3KeyMarker}{receiptHandle}";
 
-        var request = new ChangeMessageVisibilityBatchRequest("url", new List<ChangeMessageVisibilityBatchRequestEntry>
+        var request = new ChangeMessageVisibilityBatchRequest(SqsQueueUrl, new List<ChangeMessageVisibilityBatchRequestEntry>
         {
             new("1", receiptHandle) { VisibilityTimeout = 120 },
             new("2", s3ReceiptHandle) { VisibilityTimeout = 120 }
         });
 
         // act
-        await new AmazonSqsExtendedClient(SqsClientSub, ExtendedClientConfiguration)
+        await new AmazonSqsExtendedClient(SqsClientSub, ExtendedClientConfiguration, DummyLogger)
             .ChangeMessageVisibilityBatchAsync(request);
 
         //assert
         await SqsClientSub.Received(1).ChangeMessageVisibilityBatchAsync(Arg.Is<ChangeMessageVisibilityBatchRequest>(
             b =>
-                b.QueueUrl == "url" &&
+                b.QueueUrl == SqsQueueUrl &&
                 b.Entries.All(c => c.ReceiptHandle == receiptHandle && c.VisibilityTimeout == 120)));
     }
 }

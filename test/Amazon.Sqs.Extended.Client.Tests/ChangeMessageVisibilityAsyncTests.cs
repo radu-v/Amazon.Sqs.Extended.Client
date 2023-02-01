@@ -12,14 +12,14 @@ public class ChangeMessageVisibilityAsyncTests : AmazonSqsExtendedClientTestsBas
         const string originalReceiptHandle = "originalReceiptHandle";
         var receiptHandle = GenerateReceiptHandle(isS3ReceiptHandle, originalReceiptHandle);
 
-        var request = new ChangeMessageVisibilityRequest("url", receiptHandle, 120);
+        var request = new ChangeMessageVisibilityRequest(SqsQueueUrl, receiptHandle, 120);
 
         // act
-        await new AmazonSqsExtendedClient(SqsClientSub, ExtendedClientConfiguration)
+        await new AmazonSqsExtendedClient(SqsClientSub, ExtendedClientConfiguration, DummyLogger)
             .ChangeMessageVisibilityAsync(request);
 
         //assert
         await SqsClientSub.Received(1).ChangeMessageVisibilityAsync(Arg.Is<ChangeMessageVisibilityRequest>(c =>
-            c.QueueUrl == "url" && c.ReceiptHandle == originalReceiptHandle && c.VisibilityTimeout == 120));
+            c.QueueUrl == SqsQueueUrl && c.ReceiptHandle == originalReceiptHandle && c.VisibilityTimeout == 120));
     }
 }

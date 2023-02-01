@@ -7,6 +7,7 @@ using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.Sqs.Extended.Client.Providers;
 using Amazon.SQS.Model;
+using Microsoft.Extensions.Logging;
 
 namespace Amazon.Sqs.Extended.Client;
 
@@ -14,24 +15,27 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
 {
     readonly ExtendedClientConfiguration _extendedClientConfiguration;
     readonly IS3KeyProvider _s3KeyProvider;
+    readonly ILogger<AmazonSqsExtendedClient> _logger;
 
-    public AmazonSqsExtendedClient(IAmazonSQS amazonSqsToBeExtended)
-        : this(amazonSqsToBeExtended, new ExtendedClientConfiguration(), new DefaultS3KeyProvider())
+    public AmazonSqsExtendedClient(IAmazonSQS amazonSqsToBeExtended, ILogger<AmazonSqsExtendedClient> logger)
+        : this(amazonSqsToBeExtended, new ExtendedClientConfiguration(), new DefaultS3KeyProvider(), logger)
     {
     }
 
     public AmazonSqsExtendedClient(IAmazonSQS amazonSqsToBeExtended,
-        ExtendedClientConfiguration extendedClientConfiguration)
-        : this(amazonSqsToBeExtended, extendedClientConfiguration, new DefaultS3KeyProvider())
+        ExtendedClientConfiguration extendedClientConfiguration, ILogger<AmazonSqsExtendedClient> logger)
+        : this(amazonSqsToBeExtended, extendedClientConfiguration, new DefaultS3KeyProvider(), logger)
     {
     }
 
     public AmazonSqsExtendedClient(IAmazonSQS amazonSqsToBeExtended,
-        ExtendedClientConfiguration extendedClientConfiguration, IS3KeyProvider s3KeyProvider) : base(
+        ExtendedClientConfiguration extendedClientConfiguration, IS3KeyProvider s3KeyProvider,
+        ILogger<AmazonSqsExtendedClient> logger) : base(
         amazonSqsToBeExtended)
     {
         _extendedClientConfiguration = extendedClientConfiguration;
         _s3KeyProvider = s3KeyProvider;
+        _logger = logger;
     }
 
     public override async Task<ChangeMessageVisibilityResponse> ChangeMessageVisibilityAsync(
@@ -105,12 +109,12 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         }
 
         var receiveMessageResponse = await base.ReceiveMessageAsync(request, cancellationToken);
-        foreach (var message in receiveMessageResponse.Messages)
+        foreach (var message in receiveMessageResponse.Messages.Where(message =>
+                     message.MessageAttributes.ContainsKey(SqsExtendedClientConstants.ReservedAttributeName)))
         {
-            if (!message.MessageAttributes.ContainsKey(SqsExtendedClientConstants.ReservedAttributeName))
+            if (!TryGetMessagePointerFromMessageBody(message.Body, out var payloadS3Pointer))
                 continue;
 
-            var payloadS3Pointer = GetMessagePointerFromMessageBody(message.Body);
             message.Body = await ReadPayloadFromS3Async(payloadS3Pointer, cancellationToken);
             message.ReceiptHandle = EmbedS3PointerInReceiptHandle(message.ReceiptHandle, payloadS3Pointer);
             message.MessageAttributes.Remove(SqsExtendedClientConstants.ReservedAttributeName);
@@ -252,16 +256,19 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         return new PayloadS3Pointer(s3MsgBucketName, s3MsgKey);
     }
 
-    internal static PayloadS3Pointer GetMessagePointerFromMessageBody(string messageBody)
+    internal bool TryGetMessagePointerFromMessageBody(string messageBody, out PayloadS3Pointer payloadS3Pointer)
     {
         try
         {
-            return JsonSerializer.Deserialize<PayloadS3Pointer>(messageBody)!;
+            payloadS3Pointer = JsonSerializer.Deserialize<PayloadS3Pointer>(messageBody)!;
+            return true;
         }
         catch (Exception e)
         {
-            throw new AmazonClientException(
-                "Failed to read the S3 object pointer from an SQS message. Message was not received.", e);
+            _logger.LogError(e, "Failed to deserialize payload S3 pointer");
+
+            payloadS3Pointer = default;
+            return false;
         }
     }
 
@@ -286,6 +293,8 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
 
     async Task DeletePayloadFromS3Async(PayloadS3Pointer payloadS3Pointer, CancellationToken cancellationToken = new())
     {
+        const string failedToDeleteMessage = "Failed to delete the S3 object which contains the payload";
+
         try
         {
             await _extendedClientConfiguration.S3!.DeleteObjectAsync(payloadS3Pointer.S3BucketName,
@@ -293,21 +302,21 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         }
         catch (AmazonServiceException e)
         {
-            throw new AmazonClientException(
-                "Failed to delete the S3 object which contains the SQS message payload.",
-                e);
+            _logger.LogError(e, failedToDeleteMessage);
+            throw new AmazonClientException(failedToDeleteMessage, e);
         }
         catch (AmazonClientException e)
         {
-            throw new AmazonClientException(
-                "Failed to delete the S3 object which contains the SQS message payload.",
-                e);
+            _logger.LogError(e, failedToDeleteMessage);
+            throw new AmazonClientException(failedToDeleteMessage, e);
         }
     }
 
     async Task<string> ReadPayloadFromS3Async(PayloadS3Pointer payloadS3Pointer,
         CancellationToken cancellationToken = new())
     {
+        const string failedToReadMessage = "Failed to get the S3 object which contains the payload";
+
         try
         {
             using var response = await _extendedClientConfiguration.S3!.GetObjectAsync(payloadS3Pointer.S3BucketName,
@@ -318,15 +327,13 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         }
         catch (AmazonServiceException e)
         {
-            throw new AmazonClientException(
-                "Failed to get the S3 object which contains the payload.",
-                e);
+            _logger.LogError(e, failedToReadMessage);
+            throw new AmazonClientException(failedToReadMessage, e);
         }
         catch (AmazonClientException e)
         {
-            throw new AmazonClientException(
-                "Failed to get the S3 object which contains the payload.",
-                e);
+            _logger.LogError(e, failedToReadMessage);
+            throw new AmazonClientException(failedToReadMessage, e);
         }
     }
 
@@ -380,6 +387,8 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
     async Task<PayloadS3Pointer> StoreOriginalPayloadAsync(string messageBody, string s3Key,
         CancellationToken cancellationToken = new())
     {
+        const string failedToWriteMessage = "Failed to store the message content in an S3 object";
+
         var request = new PutObjectRequest
         {
             Key = s3Key,
@@ -395,15 +404,13 @@ public class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         }
         catch (AmazonServiceException e)
         {
-            throw new AmazonClientException(
-                "Failed to store the message content in an S3 object.",
-                e);
+            _logger.LogError(e, failedToWriteMessage);
+            throw new AmazonClientException(failedToWriteMessage, e);
         }
         catch (AmazonClientException e)
         {
-            throw new AmazonClientException(
-                "Failed to store the message content in an S3 object.",
-                e);
+            _logger.LogError(e, failedToWriteMessage);
+            throw new AmazonClientException(failedToWriteMessage, e);
         }
     }
 }
