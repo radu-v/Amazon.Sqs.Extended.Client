@@ -1,6 +1,6 @@
 namespace Amazon.Sqs.Extended.Client.Providers;
 
-public interface IS3KeyProvider
+public interface IPayloadStoreKeyProvider
 {
     string GenerateKey();
 }

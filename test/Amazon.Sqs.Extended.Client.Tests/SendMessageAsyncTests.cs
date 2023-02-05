@@ -2,6 +2,7 @@
 using Amazon.S3.Model;
 using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.SQS.Model;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Amazon.Sqs.Extended.Client.Tests;
@@ -31,7 +32,7 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         await ExtendedSqsWithLargePayloadEnabled.SendMessageAsync(messageRequest);
 
         // assert
-        await S3Sub.Received(1).PutObjectAsync(Arg.Any<PutObjectRequest>(), Arg.Any<CancellationToken>());
+        await PayloadStoreSub.Received(1).StoreOriginalPayloadAsync(LargeMessageBody, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -39,15 +40,14 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
     {
         // arrange
         var messageRequest = new SendMessageRequest(SqsQueueUrl, SmallMessageBody);
-        var client = new AmazonSqsExtendedClient(SqsClientSub,
-            ExtendedClientConfiguration.WithLargePayloadSupportEnabled(S3Sub, S3BucketName).WithAlwaysThroughS3(true),
-            DummyLogger);
+        var options = Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportEnabled().WithAlwaysThroughS3(true));
+        var client = new AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger);
 
         // act
         await client.SendMessageAsync(messageRequest);
 
         // assert
-        await S3Sub.Received(1).PutObjectAsync(Arg.Any<PutObjectRequest>(), Arg.Any<CancellationToken>());
+        await PayloadStoreSub.Received(1).StoreOriginalPayloadAsync(SmallMessageBody, Arg.Any<CancellationToken>());
     }
 
     [Test]
