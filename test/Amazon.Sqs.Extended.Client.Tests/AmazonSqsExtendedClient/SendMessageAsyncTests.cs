@@ -1,11 +1,10 @@
 ﻿using Amazon.Runtime;
-using Amazon.S3.Model;
 using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.SQS.Model;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Amazon.Sqs.Extended.Client.Tests;
+namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
 
 public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
 {
@@ -32,7 +31,7 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         await ExtendedSqsWithLargePayloadEnabled.SendMessageAsync(messageRequest);
 
         // assert
-        await PayloadStoreSub.Received(1).StoreOriginalPayloadAsync(LargeMessageBody, Arg.Any<CancellationToken>());
+        await PayloadStoreSub.Received(1).StorePayloadAsync(LargeMessageBody, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -41,13 +40,13 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         // arrange
         var messageRequest = new SendMessageRequest(SqsQueueUrl, SmallMessageBody);
         var options = Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportEnabled().WithAlwaysThroughS3(true));
-        var client = new AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger);
+        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger);
 
         // act
         await client.SendMessageAsync(messageRequest);
 
         // assert
-        await PayloadStoreSub.Received(1).StoreOriginalPayloadAsync(SmallMessageBody, Arg.Any<CancellationToken>());
+        await PayloadStoreSub.Received(1).StorePayloadAsync(SmallMessageBody, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -60,7 +59,11 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         await ExtendedSqsWithLargePayloadEnabled.SendMessageAsync(messageRequest);
 
         // assert
-        await S3Sub.DidNotReceive().PutObjectAsync(Arg.Any<PutObjectRequest>(), Arg.Any<CancellationToken>());
+        Assert.Multiple(async () =>
+        {
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        });
     }
 
     [Test]
@@ -73,6 +76,10 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         await ExtendedSqsWithLargePayloadDisabled.SendMessageAsync(messageRequest);
 
         // assert
-        await S3Sub.DidNotReceive().PutObjectAsync(Arg.Any<PutObjectRequest>(), Arg.Any<CancellationToken>());
+        Assert.Multiple(async () =>
+        {
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        });
     }
 }

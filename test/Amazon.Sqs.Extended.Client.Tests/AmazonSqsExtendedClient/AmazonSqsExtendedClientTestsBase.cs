@@ -1,5 +1,3 @@
-using System.Text;
-using Amazon.S3;
 using Amazon.SQS;
 using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.Sqs.Extended.Client.Models;
@@ -7,8 +5,9 @@ using Amazon.Sqs.Extended.Client.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using System.Text;
 
-namespace Amazon.Sqs.Extended.Client.Tests;
+namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
 
 public class AmazonSqsExtendedClientTestsBase
 {
@@ -19,9 +18,7 @@ public class AmazonSqsExtendedClientTestsBase
     protected const int SqsSizeLimit = 100;
     protected const int MoreThanSqsSizeLimit = SqsSizeLimit + 1;
     protected const string DefaultS3Key = "12345678901234567890123456789012";
-
-    protected IAmazonS3 S3Sub { get; private set; } = null!;
-
+    
     protected IAmazonSQS SqsClientSub { get; private set; } = null!;
 
     protected IPayloadStore PayloadStoreSub { get; private set; } = null!;
@@ -30,20 +27,20 @@ public class AmazonSqsExtendedClientTestsBase
 
     protected IPayloadStoreKeyProvider PayloadStoreKeyProviderSub { get; private set; } = null!;
 
-    protected AmazonSqsExtendedClient ExtendedSqsWithLargePayloadEnabled { get; private set; } = null!;
+    protected Client.AmazonSqsExtendedClient ExtendedSqsWithLargePayloadEnabled { get; private set; } = null!;
 
-    protected AmazonSqsExtendedClient ExtendedSqsWithLargePayloadDisabled { get; private set; } = null!;
+    protected Client.AmazonSqsExtendedClient ExtendedSqsWithLargePayloadDisabled { get; private set; } = null!;
 
     protected string LargeMessageBody { get; private set; } = null!;
 
     protected string SmallMessageBody { get; private set; } = null!;
 
-    protected ILogger<AmazonSqsExtendedClient> DummyLogger = null!;
+    protected ILogger<Client.AmazonSqsExtendedClient> DummyLogger = null!;
 
     [OneTimeSetUp]
     public void OneTimeSetup()
     {
-        DummyLogger = Substitute.For<ILogger<AmazonSqsExtendedClient>>();
+        DummyLogger = Substitute.For<ILogger<Client.AmazonSqsExtendedClient>>();
         LargeMessageBody = GenerateStringWithLength(MoreThanSqsSizeLimit);
         SmallMessageBody = GenerateStringWithLength(LessThanSqsSizeLimit);
     }
@@ -51,7 +48,6 @@ public class AmazonSqsExtendedClientTestsBase
     [SetUp]
     public void Setup()
     {
-        S3Sub = Substitute.For<IAmazonS3>();
         PayloadStoreSub = Substitute.For<IPayloadStore>();
         SqsClientSub = Substitute.For<IAmazonSQS>();
         PayloadStoreKeyProviderSub = Substitute.For<IPayloadStoreKeyProvider>();
@@ -62,11 +58,11 @@ public class AmazonSqsExtendedClientTestsBase
             .WithPayloadSizeThreshold(SqsSizeLimit);
 
         ExtendedSqsWithLargePayloadEnabled =
-            new AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub,
+            new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub,
                 Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportEnabled()), DummyLogger);
 
         ExtendedSqsWithLargePayloadDisabled =
-            new AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportDisabled()),
+            new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportDisabled()),
                 DummyLogger);
     }
 

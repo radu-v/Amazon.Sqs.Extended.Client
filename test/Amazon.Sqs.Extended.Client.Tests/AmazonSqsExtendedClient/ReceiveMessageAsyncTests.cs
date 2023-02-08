@@ -1,11 +1,9 @@
-using Amazon.S3.Model;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.SQS.Model;
 using NSubstitute;
-using System.Text;
 using System.Text.Json;
 
-namespace Amazon.Sqs.Extended.Client.Tests;
+namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
 
 [TestFixture]
 public class ReceiveMessageAsyncTests : AmazonSqsExtendedClientTestsBase
@@ -32,7 +30,7 @@ public class ReceiveMessageAsyncTests : AmazonSqsExtendedClientTestsBase
                 r.QueueUrl == SqsQueueUrl
                 && r.MessageAttributeNames.Contains(SqsExtendedClientConstants.ReservedAttributeName)));
 
-            S3Sub.DidNotReceiveGetObjectAsyncCallsWithAnyArgs();
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().ReadPayloadAsync(default);
         });
     }
 
@@ -58,13 +56,14 @@ public class ReceiveMessageAsyncTests : AmazonSqsExtendedClientTestsBase
                 r.QueueUrl == SqsQueueUrl
                 && !r.MessageAttributeNames.Contains(SqsExtendedClientConstants.ReservedAttributeName)));
 
-            S3Sub.DidNotReceiveGetObjectAsyncCallsWithAnyArgs();
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().ReadPayloadAsync(default);
         });
     }
 
     [Test]
     public async Task ReadsFromS3WhenPayloadIsLarge()
     {
+        // arrange
         var pointer = new PayloadPointer(S3BucketName, S3Key);
         var message = new Message
         {
@@ -77,44 +76,33 @@ public class ReceiveMessageAsyncTests : AmazonSqsExtendedClientTestsBase
 
         const string expectedMessage = "LargeMessage";
 
-        var s3Object = new GetObjectResponse
-        {
-            BucketName = S3BucketName,
-            ResponseStream = new MemoryStream(Encoding.UTF8.GetBytes(expectedMessage))
-        };
-
         SqsClientSub.ReceiveMessageAsync(Arg.Any<ReceiveMessageRequest>(), Arg.Any<CancellationToken>())
             .Returns(new ReceiveMessageResponse { Messages = new List<Message> { message } });
 
-        PayloadStoreSub.ReadPayloadFromS3Async(pointer, Arg.Any<CancellationToken>())
+        PayloadStoreSub.ReadPayloadAsync(pointer, Arg.Any<CancellationToken>())
             .Returns(expectedMessage);
 
-        // S3Sub.GetObjectAsync(Arg.Is<GetObjectRequest>(g => g.BucketName == S3BucketName && g.Key == S3Key),
-        //         Arg.Any<CancellationToken>())
-        //     .Returns(Task.FromResult(s3Object));
-        //
-        // S3Sub.GetObjectAsync(S3BucketName, S3Key, Arg.Any<CancellationToken>())
-        //     .Returns(Task.FromResult(s3Object));
-
         var messageRequest = new ReceiveMessageRequest();
+        
+        // act
         var actualReceiveMessageResponse = await ExtendedSqsWithLargePayloadEnabled.ReceiveMessageAsync(messageRequest);
         var actualMessage = actualReceiveMessageResponse.Messages.First<Message>();
 
+        // assert
         Assert.Multiple(async () =>
         {
             Assert.That(actualMessage.Body, Is.EqualTo(expectedMessage));
             Assert.That(actualMessage.MessageAttributes,
                 Does.Not.ContainKey(SqsExtendedClientConstants.ReservedAttributeName));
 
-            await PayloadStoreSub.Received(1).ReadPayloadFromS3Async(pointer, Arg.Any<CancellationToken>()); 
-
-            // S3Sub.ReceivedGetObjectAsyncCalls(1, S3BucketName, S3Key);
+            await PayloadStoreSub.Received(1).ReadPayloadAsync(pointer, Arg.Any<CancellationToken>()); 
         });
     }
     
     [Test]
     public async Task DoesNotReadFromS3WhenPayloadIsNotS3PayloadPointer()
     {
+        // arrange
         const string expectedMessage = "Not S3 payload";
         var message = new Message
         {
@@ -125,18 +113,20 @@ public class ReceiveMessageAsyncTests : AmazonSqsExtendedClientTestsBase
             Body = expectedMessage
         };
 
-
         SqsClientSub.ReceiveMessageAsync(Arg.Any<ReceiveMessageRequest>(), Arg.Any<CancellationToken>())
             .Returns(new ReceiveMessageResponse { Messages = new List<Message> { message } });
 
         var messageRequest = new ReceiveMessageRequest();
+        
+        // act
         var actualReceiveMessageResponse = await ExtendedSqsWithLargePayloadEnabled.ReceiveMessageAsync(messageRequest);
-        var actualMessage = Enumerable.First<Message>(actualReceiveMessageResponse.Messages);
+        var actualMessage = actualReceiveMessageResponse.Messages.First<Message>();
 
+        // assert
         Assert.Multiple(() =>
         {
             Assert.That(actualMessage.Body, Is.EqualTo(expectedMessage));
-            S3Sub.DidNotReceiveGetObjectAsyncCallsWithAnyArgs();
+            PayloadStoreSub.DidNotReceiveWithAnyArgs().ReadPayloadAsync(default);
         });
     }
 }

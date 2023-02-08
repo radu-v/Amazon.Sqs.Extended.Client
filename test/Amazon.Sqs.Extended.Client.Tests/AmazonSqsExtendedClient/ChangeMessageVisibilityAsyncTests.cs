@@ -2,7 +2,7 @@ using Amazon.SQS.Model;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Amazon.Sqs.Extended.Client.Tests;
+namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
 
 public class ChangeMessageVisibilityAsyncTests : AmazonSqsExtendedClientTestsBase
 {
@@ -17,7 +17,7 @@ public class ChangeMessageVisibilityAsyncTests : AmazonSqsExtendedClientTestsBas
         var options = Options.Create(ExtendedClientConfiguration);
 
         // act
-        await new AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger)
+        await new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger)
             .ChangeMessageVisibilityAsync(request);
 
         //assert

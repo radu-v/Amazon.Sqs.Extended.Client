@@ -3,7 +3,7 @@ using Amazon.S3.Model;
 using NSubstitute;
 using NSubstitute.Core;
 
-namespace Amazon.Sqs.Extended.Client.Tests;
+namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore;
 
 public static class S3SubstituteExtensions
 {

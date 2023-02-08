@@ -31,8 +31,4 @@
      <ProjectReference Include="..\..\src\Amazon.Sqs.Extended.Client\Amazon.Sqs.Extended.Client.csproj" />
    </ItemGroup>
 
-   <ItemGroup>
-     <Folder Include="AmazonSqsExtendedClient" />
-   </ItemGroup>
-
 </Project>

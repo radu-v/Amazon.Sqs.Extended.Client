@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Amazon.Sqs.Extended.Client
 {
-    public class S3PayloadStore : IPayloadStore
+    public sealed class S3PayloadStore : IPayloadStore
     {
         readonly IAmazonS3 _amazonS3;
         readonly IPayloadStoreKeyProvider _payloadStoreKeyProvider;
@@ -24,7 +24,7 @@ namespace Amazon.Sqs.Extended.Client
             _payloadStoreConfiguration = options.Value;
         }
 
-        public async Task DeletePayloadFromS3Async(PayloadPointer payloadPointer, CancellationToken cancellationToken = new())
+        public async Task DeletePayloadAsync(PayloadPointer payloadPointer, CancellationToken cancellationToken = new())
         {
             const string failedToDeleteMessage = "Failed to delete the S3 object which contains the payload";
 
@@ -33,19 +33,14 @@ namespace Amazon.Sqs.Extended.Client
                 await _amazonS3.DeleteObjectAsync(payloadPointer.BucketName,
                     payloadPointer.Key, cancellationToken);
             }
-            catch (AmazonServiceException e)
-            {
-                _logger.LogError(e, failedToDeleteMessage);
-                throw new AmazonClientException(failedToDeleteMessage, e);
-            }
-            catch (AmazonClientException e)
+            catch (Exception e)
             {
                 _logger.LogError(e, failedToDeleteMessage);
                 throw new AmazonClientException(failedToDeleteMessage, e);
             }
         }
 
-        public async Task<string> ReadPayloadFromS3Async(
+        public async Task<string> ReadPayloadAsync(
             PayloadPointer payloadPointer,
             CancellationToken cancellationToken = new())
         {
@@ -59,27 +54,22 @@ namespace Amazon.Sqs.Extended.Client
                 var stream = new StreamReader(response.ResponseStream);
                 return await stream.ReadToEndAsync();
             }
-            catch (AmazonServiceException e)
-            {
-                _logger.LogError(e, failedToReadMessage);
-                throw new AmazonClientException(failedToReadMessage, e);
-            }
-            catch (AmazonClientException e)
+            catch (Exception e)
             {
                 _logger.LogError(e, failedToReadMessage);
                 throw new AmazonClientException(failedToReadMessage, e);
             }
         }
 
-        public async Task<PayloadPointer> StoreOriginalPayloadAsync(
+        public async Task<PayloadPointer> StorePayloadAsync(
             string payloadBody,
             CancellationToken cancellationToken = new())
         {
             var s3Key = _payloadStoreKeyProvider.GenerateKey();
-            return await StoreOriginalPayloadAsync(payloadBody, s3Key, cancellationToken);
+            return await StorePayloadAsync(payloadBody, s3Key, cancellationToken);
         }
 
-        public async Task<PayloadPointer> StoreOriginalPayloadAsync(
+        public async Task<PayloadPointer> StorePayloadAsync(
             string payloadBody,
             string payloadKey,
             CancellationToken cancellationToken = new())
@@ -99,12 +89,7 @@ namespace Amazon.Sqs.Extended.Client
                 await _amazonS3.PutObjectAsync(request, cancellationToken);
                 return new PayloadPointer(_payloadStoreConfiguration.BucketName, payloadKey);
             }
-            catch (AmazonServiceException e)
-            {
-                _logger.LogError(e, failedToWriteMessage);
-                throw new AmazonClientException(failedToWriteMessage, e);
-            }
-            catch (AmazonClientException e)
+            catch (Exception e)
             {
                 _logger.LogError(e, failedToWriteMessage);
                 throw new AmazonClientException(failedToWriteMessage, e);

@@ -1,10 +1,9 @@
-using Amazon.S3.Model;
 using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.SQS.Model;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Amazon.Sqs.Extended.Client.Tests;
+namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
 
 public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
 {
@@ -21,7 +20,7 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         await ExtendedSqsWithLargePayloadEnabled.SendMessageBatchAsync(messageRequest);
 
         // assert
-        await PayloadStoreSub.Received(1).StoreOriginalPayloadAsync(LargeMessageBody, Arg.Any<CancellationToken>());
+        await PayloadStoreSub.Received(1).StorePayloadAsync(LargeMessageBody, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -37,7 +36,11 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         await ExtendedSqsWithLargePayloadEnabled.SendMessageBatchAsync(messageRequest);
 
         // assert
-        await S3Sub.DidNotReceive().PutObjectAsync(Arg.Any<PutObjectRequest>(), Arg.Any<CancellationToken>());
+        Assert.Multiple(async () =>
+        {
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        });
     }
 
     [Test]
@@ -54,7 +57,11 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         await ExtendedSqsWithLargePayloadDisabled.SendMessageBatchAsync(messageRequest);
 
         // assert
-        await S3Sub.DidNotReceive().PutObjectAsync(Arg.Any<PutObjectRequest>(), Arg.Any<CancellationToken>());
+        Assert.Multiple(async () =>
+        {
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        });
     }
 
     [Test]
@@ -68,8 +75,7 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         });
 
         var options = Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportEnabled().WithAlwaysThroughS3(true));
-
-        var client = new AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger);
+        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger);
 
         // act
         await client.SendMessageBatchAsync(messageRequest);
@@ -77,8 +83,8 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         // assert
         Assert.Multiple(async () =>
         {
-            await PayloadStoreSub.Received(1).StoreOriginalPayloadAsync(LargeMessageBody, Arg.Any<CancellationToken>());
-            await PayloadStoreSub.Received(1).StoreOriginalPayloadAsync(SmallMessageBody, Arg.Any<CancellationToken>());
+            await PayloadStoreSub.Received(1).StorePayloadAsync(LargeMessageBody, Arg.Any<CancellationToken>());
+            await PayloadStoreSub.Received(1).StorePayloadAsync(SmallMessageBody, Arg.Any<CancellationToken>());
         });
     }
 
@@ -96,6 +102,6 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         await ExtendedSqsWithLargePayloadEnabled.SendMessageBatchAsync(messageRequest);
 
         // assert
-        await PayloadStoreSub.Received(1).StoreOriginalPayloadAsync(LargeMessageBody, Arg.Any<CancellationToken>());
+        await PayloadStoreSub.Received(1).StorePayloadAsync(LargeMessageBody, Arg.Any<CancellationToken>());
     }
 }
