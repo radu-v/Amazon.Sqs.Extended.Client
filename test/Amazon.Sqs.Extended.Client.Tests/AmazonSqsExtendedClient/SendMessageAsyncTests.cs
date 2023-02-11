@@ -16,9 +16,11 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         // arrange
         var messageRequest = new SendMessageRequest(SqsQueueUrl, messageBody);
 
-        // act, assert
-        Assert.ThrowsAsync<AmazonClientException>(() =>
-            ExtendedSqsWithLargePayloadEnabled.SendMessageAsync(messageRequest));
+        // act
+        Task<SendMessageResponse> Act() => ExtendedSqsWithLargePayloadEnabled.SendMessageAsync(messageRequest);
+
+        // assert
+        Assert.ThrowsAsync<AmazonClientException>(Act);
     }
 
     [Test]

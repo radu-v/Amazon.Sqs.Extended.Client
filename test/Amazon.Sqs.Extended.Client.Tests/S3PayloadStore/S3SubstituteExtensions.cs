@@ -24,20 +24,15 @@ public static class S3SubstituteExtensions
 
     public static void DidNotReceiveGetObjectAsyncCallsWithAnyArgs(this IAmazonS3 amazonS3Substitute)
     {
-        var calls = GetReceivedGetObjectAsyncCallsWithAnyArgs(amazonS3Substitute);
-
-        Assert.That(calls, Is.Empty);
-    }
-
-    static IEnumerable<ICall> GetReceivedGetObjectAsyncCallsWithAnyArgs(IAmazonS3 amazonS3Substitute)
-    {
-        return amazonS3Substitute.ReceivedCalls()
+        var calls = amazonS3Substitute.ReceivedCalls()
             .Where(c => c.GetMethodInfo().Name == nameof(IAmazonS3.GetObjectAsync))
             .Where(c =>
             {
                 var args = c.GetArguments();
                 return args[0] is GetObjectRequest || args[0] is string && args[1] is string;
             });
+
+        Assert.That(calls, Is.Empty);
     }
 
     static IEnumerable<ICall> GetReceivedGetObjectAsyncCalls(IAmazonS3 amazonS3Substitute, string s3BucketName, string s3Key)

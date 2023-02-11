@@ -15,7 +15,10 @@ namespace Amazon.Sqs.Extended.Client
         readonly ILogger<S3PayloadStore> _logger;
         readonly PayloadStoreConfiguration _payloadStoreConfiguration;
 
-        public S3PayloadStore(IAmazonS3 amazonS3, IPayloadStoreKeyProvider payloadStoreKeyProvider, ILogger<S3PayloadStore> logger,
+        public S3PayloadStore(
+            IAmazonS3 amazonS3,
+            IPayloadStoreKeyProvider payloadStoreKeyProvider,
+            ILogger<S3PayloadStore> logger,
             IOptions<PayloadStoreConfiguration> options)
         {
             _amazonS3 = amazonS3;
@@ -49,8 +52,7 @@ namespace Amazon.Sqs.Extended.Client
             try
             {
                 using var response = await _amazonS3.GetObjectAsync(payloadPointer.BucketName,
-                    payloadPointer.Key,
-                    cancellationToken);
+                    payloadPointer.Key, cancellationToken);
                 var stream = new StreamReader(response.ResponseStream);
                 return await stream.ReadToEndAsync();
             }

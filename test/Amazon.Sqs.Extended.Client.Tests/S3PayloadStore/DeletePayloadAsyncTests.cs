@@ -10,7 +10,7 @@ using NSubstitute.ExceptionExtensions;
 namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
 {
     [TestFixture]
-    public class DeletePayloadFromS3AsyncTests
+    public class DeletePayloadAsyncTests
     {
         const string BucketName = "bucket";
         const string S3Key = "test-key";
@@ -44,14 +44,17 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
         }
 
         [Test]
-        public void ThrowsAmazonClientExceptionWhenS3DeleteObjectAsyncFails()
+        public void ThrowsAmazonClientExceptionWhenDeleteObjectAsyncFails()
         {
             // arrange
             _amazonS3Sub.DeleteObjectAsync(string.Empty, string.Empty)
                 .ThrowsAsyncForAnyArgs(ci => new AmazonClientException(""));
 
-            // act, assert
-            Assert.ThrowsAsync<AmazonClientException>(() => _s3PayloadStore.DeletePayloadAsync(_payloadPointer));
+            // act
+            Task Act() => _s3PayloadStore.DeletePayloadAsync(_payloadPointer);
+            
+            // assert
+            Assert.ThrowsAsync<AmazonClientException>(Act);
         }
     }
 }
