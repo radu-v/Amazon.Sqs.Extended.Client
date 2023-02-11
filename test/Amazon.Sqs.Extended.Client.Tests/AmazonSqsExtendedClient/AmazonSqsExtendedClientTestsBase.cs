@@ -66,7 +66,7 @@ public class AmazonSqsExtendedClientTestsBase
                 DummyLogger);
     }
 
-    static string GenerateStringWithLength(int messageLength) => new('Q', messageLength);
+    protected static string GenerateStringWithLength(int messageLength) => new('Q', messageLength);
 
     protected static string GenerateReceiptHandle(
         bool isS3ReceiptHandle,

@@ -3,6 +3,7 @@ using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.SQS.Model;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using System.Text;
 
 namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
 
@@ -15,6 +16,63 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
     {
         // arrange
         var messageRequest = new SendMessageRequest(SqsQueueUrl, messageBody);
+
+        // act
+        Task<SendMessageResponse> Act() => ExtendedSqsWithLargePayloadEnabled.SendMessageAsync(messageRequest);
+
+        // assert
+        Assert.ThrowsAsync<AmazonClientException>(Act);
+    }
+
+    [Test]
+    public void ThrowsWhenMessageAttributesSizeExceedsThreshold()
+    {
+        // arrange
+        const string messageBody = "message";
+        var messageRequest = new SendMessageRequest(SqsQueueUrl, messageBody)
+        {
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                {"string-attr", new MessageAttributeValue {DataType = "string", StringValue = LargeMessageBody}},
+                {"binary-attr", new MessageAttributeValue {DataType = "binary", BinaryValue = new MemoryStream(Encoding.UTF8.GetBytes(LargeMessageBody))}}
+            }
+        };
+
+        // act
+        Task<SendMessageResponse> Act() => ExtendedSqsWithLargePayloadEnabled.SendMessageAsync(messageRequest);
+
+        // assert
+        Assert.ThrowsAsync<AmazonClientException>(Act);
+    }
+
+    [Test]
+    public void ThrowsWhenMessageAttributesCountExceedsThreshold()
+    {
+        // arrange
+        var messageRequest = new SendMessageRequest(SqsQueueUrl, LargeMessageBody)
+        {
+            MessageAttributes = Enumerable.Range(0, SqsExtendedClientConstants.MaxAllowedAttributes + 1)
+                .ToDictionary(i => i.ToString(), _ => new MessageAttributeValue {DataType = "string", StringValue = "a"})
+        };
+
+        // act
+        Task<SendMessageResponse> Act() => ExtendedSqsWithLargePayloadEnabled.SendMessageAsync(messageRequest);
+
+        // assert
+        Assert.ThrowsAsync<AmazonClientException>(Act);
+    }
+    
+    [Test]
+    public void ThrowsWhenMessageAttributesContainsReservedAttributeName()
+    {
+        // arrange
+        var messageRequest = new SendMessageRequest(SqsQueueUrl, LargeMessageBody)
+        {
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>
+            {
+                { SqsExtendedClientConstants.ReservedAttributeName, new MessageAttributeValue() }
+            }
+        };
 
         // act
         Task<SendMessageResponse> Act() => ExtendedSqsWithLargePayloadEnabled.SendMessageAsync(messageRequest);
