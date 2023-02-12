@@ -162,7 +162,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         return await base.SendMessageBatchAsync(request, cancellationToken);
     }
 
-    static void CheckMessageAttributes(IReadOnlyDictionary<string, MessageAttributeValue> messageAttributes, long payloadSizeThreshold)
+    static void CheckMessageAttributes(IDictionary<string, MessageAttributeValue> messageAttributes, long payloadSizeThreshold)
     {
         var msgAttributesSize = GetMessageAttributesSize(messageAttributes);
         if (msgAttributesSize > payloadSizeThreshold)
@@ -201,7 +201,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         return totalMsgSize > _extendedClientConfiguration.PayloadSizeThreshold;
     }
 
-    static long GetMessageAttributesSize(IReadOnlyDictionary<string, MessageAttributeValue> messageAttributes)
+    static long GetMessageAttributesSize(IDictionary<string, MessageAttributeValue> messageAttributes)
     {
         var totalMessageAttributesSize = 0L;
         foreach (var attribute in messageAttributes)
@@ -291,7 +291,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
 
     async Task<(Dictionary<string, MessageAttributeValue> updatedMessageAttributes, string updatedMessageBody)>
         WritePayloadToS3Async(
-            IReadOnlyDictionary<string, MessageAttributeValue> messageAttributes,
+            IDictionary<string, MessageAttributeValue> messageAttributes,
             string messageBody,
             CancellationToken cancellationToken)
     {

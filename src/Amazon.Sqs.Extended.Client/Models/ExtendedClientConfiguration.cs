@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Amazon.Sqs.Extended.Client.Models;
 
-[ExcludeFromCodeCoverage(Justification = "Model")]
+[ExcludeFromCodeCoverage]
 public record ExtendedClientConfiguration
 {
     public bool CleanupPayload { get; init; } = true;
