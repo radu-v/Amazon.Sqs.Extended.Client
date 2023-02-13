@@ -1,7 +1,6 @@
 using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.SQS.Model;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
@@ -35,9 +34,8 @@ public class DeleteMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         {
             config = config.WithLargePayloadSupportEnabled(isCleanupPayloadEnabled);
         }
-        
-        var options = Options.Create(config);
-        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger);
+
+        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, config, DummyLogger);
 
         // act
         await client.DeleteMessageBatchAsync(request);

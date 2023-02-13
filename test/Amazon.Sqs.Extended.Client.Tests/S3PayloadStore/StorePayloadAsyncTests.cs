@@ -4,7 +4,6 @@ using Amazon.S3.Model;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.Sqs.Extended.Client.Providers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -29,8 +28,7 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
             _payloadStoreKeyProviderSub = Substitute.For<IPayloadStoreKeyProvider>();
             var loggerSub = Substitute.For<ILogger<Client.S3PayloadStore>>();
             _payloadStoreConfiguration = new PayloadStoreConfiguration(BucketName);
-            var options = Options.Create(_payloadStoreConfiguration);
-            _s3PayloadStore = new Client.S3PayloadStore(_amazonS3Sub, _payloadStoreKeyProviderSub, loggerSub, options);
+            _s3PayloadStore = new Client.S3PayloadStore(_amazonS3Sub, _payloadStoreKeyProviderSub, _payloadStoreConfiguration, loggerSub);
 
             _payloadStoreKeyProviderSub.GenerateKey().Returns(S3Key);
         }
@@ -48,7 +46,7 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
                 && x.ContentBody == PayloadBody
                 && x.CannedACL == _payloadStoreConfiguration.S3CannedAcl));
         }
-        
+
         [Test]
         public async Task CallsPutObjectAsyncWithProvidedKey()
         {
@@ -74,7 +72,7 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
 
             // act
             Task Act() => _s3PayloadStore.StorePayloadAsync("something");
-            
+
             // assert
             Assert.ThrowsAsync<AmazonClientException>(Act);
         }

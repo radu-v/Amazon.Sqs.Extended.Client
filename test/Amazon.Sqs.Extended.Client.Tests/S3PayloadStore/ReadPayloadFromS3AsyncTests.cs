@@ -4,7 +4,6 @@ using Amazon.S3.Model;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.Sqs.Extended.Client.Providers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -29,8 +28,8 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
             _payloadStoreKeyProviderSub = Substitute.For<IPayloadStoreKeyProvider>();
             var loggerSub = Substitute.For<ILogger<Client.S3PayloadStore>>();
             _payloadStoreConfiguration = new PayloadStoreConfiguration(BucketName);
-            var options = Options.Create(_payloadStoreConfiguration);
-            _s3PayloadStore = new Client.S3PayloadStore(_amazonS3Sub, _payloadStoreKeyProviderSub, loggerSub, options);
+            _s3PayloadStore = new Client.S3PayloadStore(_amazonS3Sub, _payloadStoreKeyProviderSub,
+                _payloadStoreConfiguration, loggerSub);
 
             _payloadStoreKeyProviderSub.GenerateKey().Returns(S3Key);
             _payloadPointer = new PayloadPointer(BucketName, S3Key);
@@ -44,14 +43,14 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
             response.ResponseStream = new MemoryStream();
             _amazonS3Sub.GetObjectAsync(BucketName, S3Key, Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult(response));
-            
+
             // act
             await _s3PayloadStore.ReadPayloadAsync(_payloadPointer);
 
             // assert
             _amazonS3Sub.ReceivedGetObjectAsyncCalls(1, BucketName, S3Key);
         }
-        
+
         [Test]
         public void ThrowsAmazonClientExceptionWhenGetObjectAsyncFails()
         {
@@ -61,7 +60,7 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
 
             // act
             Task Act() => _s3PayloadStore.ReadPayloadAsync(_payloadPointer);
-            
+
             // assert
             Assert.ThrowsAsync<AmazonClientException>(Act);
         }

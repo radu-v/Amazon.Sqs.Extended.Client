@@ -1,7 +1,6 @@
 ﻿using Amazon.Runtime;
 using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.SQS.Model;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using System.Text;
 
@@ -33,8 +32,14 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         {
             MessageAttributes = new Dictionary<string, MessageAttributeValue>
             {
-                {"string-attr", new MessageAttributeValue {DataType = "string", StringValue = LargeMessageBody}},
-                {"binary-attr", new MessageAttributeValue {DataType = "binary", BinaryValue = new MemoryStream(Encoding.UTF8.GetBytes(LargeMessageBody))}}
+                { "string-attr", new MessageAttributeValue { DataType = "string", StringValue = LargeMessageBody } },
+                {
+                    "binary-attr",
+                    new MessageAttributeValue
+                    {
+                        DataType = "binary", BinaryValue = new MemoryStream(Encoding.UTF8.GetBytes(LargeMessageBody))
+                    }
+                }
             }
         };
 
@@ -52,7 +57,8 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         var messageRequest = new SendMessageRequest(SqsQueueUrl, LargeMessageBody)
         {
             MessageAttributes = Enumerable.Range(0, SqsExtendedClientConstants.MaxAllowedAttributes + 1)
-                .ToDictionary(i => i.ToString(), _ => new MessageAttributeValue {DataType = "string", StringValue = "a"})
+                .ToDictionary(i => i.ToString(),
+                    _ => new MessageAttributeValue { DataType = "string", StringValue = "a" })
         };
 
         // act
@@ -61,7 +67,7 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         // assert
         Assert.ThrowsAsync<AmazonClientException>(Act);
     }
-    
+
     [Test]
     public void ThrowsWhenMessageAttributesContainsReservedAttributeName()
     {
@@ -99,8 +105,8 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
     {
         // arrange
         var messageRequest = new SendMessageRequest(SqsQueueUrl, SmallMessageBody);
-        var options = Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportEnabled().WithAlwaysThroughS3(true));
-        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger);
+        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub,
+            ExtendedClientConfiguration.WithLargePayloadSupportEnabled().WithAlwaysThroughS3(true), DummyLogger);
 
         // act
         await client.SendMessageAsync(messageRequest);
@@ -121,8 +127,10 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         // assert
         Assert.Multiple(async () =>
         {
-            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs()
+                .StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs()
+                .StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         });
     }
 
@@ -138,8 +146,10 @@ public class SendMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         // assert
         Assert.Multiple(async () =>
         {
-            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs()
+                .StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs()
+                .StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         });
     }
 }

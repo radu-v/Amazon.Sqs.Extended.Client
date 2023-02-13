@@ -3,7 +3,6 @@ using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.Sqs.Extended.Client.Providers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using System.Text;
 
@@ -18,7 +17,7 @@ public class AmazonSqsExtendedClientTestsBase
     protected const int SqsSizeLimit = 100;
     protected const int MoreThanSqsSizeLimit = SqsSizeLimit + 1;
     protected const string DefaultS3Key = "12345678901234567890123456789012";
-    
+
     protected IAmazonSQS SqsClientSub { get; private set; } = null!;
 
     protected IPayloadStore PayloadStoreSub { get; private set; } = null!;
@@ -59,14 +58,14 @@ public class AmazonSqsExtendedClientTestsBase
 
         ExtendedSqsWithLargePayloadEnabled =
             new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub,
-                Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportEnabled()), DummyLogger);
+                ExtendedClientConfiguration.WithLargePayloadSupportEnabled(), DummyLogger);
 
         ExtendedSqsWithLargePayloadDisabled =
-            new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportDisabled()),
+            new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, ExtendedClientConfiguration.WithLargePayloadSupportDisabled(),
                 DummyLogger);
     }
 
-    protected static string GenerateStringWithLength(int messageLength) => new('Q', messageLength);
+    static string GenerateStringWithLength(int messageLength) => new('Q', messageLength);
 
     protected static string GenerateReceiptHandle(
         bool isS3ReceiptHandle,

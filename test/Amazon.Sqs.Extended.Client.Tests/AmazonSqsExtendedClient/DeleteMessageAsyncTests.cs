@@ -1,7 +1,6 @@
 ﻿using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.SQS.Model;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
@@ -32,10 +31,8 @@ public class DeleteMessageAsyncTests : AmazonSqsExtendedClientTestsBase
         {
             config = config.WithLargePayloadSupportEnabled(isCleanupPayloadEnabled);
         }
-        
-        var options = Options.Create(config);
 
-        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger);
+        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, config, DummyLogger);
 
         // act
         await client.DeleteMessageAsync(request);
@@ -47,7 +44,8 @@ public class DeleteMessageAsyncTests : AmazonSqsExtendedClientTestsBase
 
             if (willCallS3)
             {
-                await PayloadStoreSub.Received(1).DeletePayloadAsync(Arg.Is<PayloadPointer>(p => p.BucketName == S3BucketName && p.Key == S3Key));
+                await PayloadStoreSub.Received(1)
+                    .DeletePayloadAsync(Arg.Is<PayloadPointer>(p => p.BucketName == S3BucketName && p.Key == S3Key));
             }
             else
             {

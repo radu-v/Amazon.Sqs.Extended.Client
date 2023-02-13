@@ -1,5 +1,4 @@
 using Amazon.SQS.Model;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
@@ -15,16 +14,16 @@ public class ChangeMessageVisibilityBatchAsyncTests : AmazonSqsExtendedClientTes
         const string s3ReceiptHandle =
             $"{SqsExtendedClientConstants.S3BucketNameMarker}{SqsExtendedClientConstants.S3BucketNameMarker}{SqsExtendedClientConstants.S3KeyMarker}{SqsExtendedClientConstants.S3KeyMarker}{receiptHandle}";
 
-        var request = new ChangeMessageVisibilityBatchRequest(SqsQueueUrl, new List<ChangeMessageVisibilityBatchRequestEntry>
-        {
-            new("1", receiptHandle) { VisibilityTimeout = 120 },
-            new("2", s3ReceiptHandle) { VisibilityTimeout = 120 }
-        });
-        
-        var options = Options.Create(ExtendedClientConfiguration);
+        var request = new ChangeMessageVisibilityBatchRequest(SqsQueueUrl,
+            new List<ChangeMessageVisibilityBatchRequestEntry>
+            {
+                new("1", receiptHandle) { VisibilityTimeout = 120 },
+                new("2", s3ReceiptHandle) { VisibilityTimeout = 120 }
+            });
 
         // act
-        await new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger)
+        await new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, ExtendedClientConfiguration,
+                DummyLogger)
             .ChangeMessageVisibilityBatchAsync(request);
 
         //assert

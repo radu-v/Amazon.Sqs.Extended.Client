@@ -1,6 +1,5 @@
 using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.SQS.Model;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Amazon.Sqs.Extended.Client.Tests.AmazonSqsExtendedClient;
@@ -38,8 +37,10 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         // assert
         Assert.Multiple(async () =>
         {
-            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs()
+                .StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs()
+                .StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         });
     }
 
@@ -59,8 +60,10 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
         // assert
         Assert.Multiple(async () =>
         {
-            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-            await PayloadStoreSub.DidNotReceiveWithAnyArgs().StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs()
+                .StorePayloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            await PayloadStoreSub.DidNotReceiveWithAnyArgs()
+                .StorePayloadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         });
     }
 
@@ -74,8 +77,8 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
             new("2", LargeMessageBody)
         });
 
-        var options = Options.Create(ExtendedClientConfiguration.WithLargePayloadSupportEnabled().WithAlwaysThroughS3(true));
-        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, options, DummyLogger);
+        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub,
+            ExtendedClientConfiguration.WithLargePayloadSupportEnabled().WithAlwaysThroughS3(true), DummyLogger);
 
         // act
         await client.SendMessageBatchAsync(messageRequest);

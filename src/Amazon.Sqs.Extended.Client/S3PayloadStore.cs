@@ -4,7 +4,6 @@ using Amazon.S3.Model;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.Sqs.Extended.Client.Providers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Amazon.Sqs.Extended.Client
 {
@@ -15,16 +14,15 @@ namespace Amazon.Sqs.Extended.Client
         readonly ILogger<S3PayloadStore> _logger;
         readonly PayloadStoreConfiguration _payloadStoreConfiguration;
 
-        public S3PayloadStore(
-            IAmazonS3 amazonS3,
+        public S3PayloadStore(IAmazonS3 amazonS3,
             IPayloadStoreKeyProvider payloadStoreKeyProvider,
-            ILogger<S3PayloadStore> logger,
-            IOptions<PayloadStoreConfiguration> options)
+            PayloadStoreConfiguration configuration,
+            ILogger<S3PayloadStore> logger)
         {
             _amazonS3 = amazonS3;
             _payloadStoreKeyProvider = payloadStoreKeyProvider;
             _logger = logger;
-            _payloadStoreConfiguration = options.Value;
+            _payloadStoreConfiguration = configuration;
         }
 
         public async Task DeletePayloadAsync(PayloadPointer payloadPointer, CancellationToken cancellationToken = new())

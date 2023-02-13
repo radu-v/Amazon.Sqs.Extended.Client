@@ -11,8 +11,7 @@
     <ItemGroup>
         <PackageReference Include="AWSSDK.S3" Version="3.7.103.8"/>
         <PackageReference Include="AWSSDK.SQS" Version="3.7.100.72"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Options" Version="7.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.3"/>
     </ItemGroup>
     <ItemGroup Condition=" '$(TargetFramework)' == 'net472' ">
         <PackageReference Include="System.Text.Json" Version="6.0.7"/>

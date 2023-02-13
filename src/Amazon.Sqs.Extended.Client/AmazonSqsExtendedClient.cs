@@ -6,7 +6,6 @@ using Amazon.Sqs.Extended.Client.Extensions;
 using Amazon.Sqs.Extended.Client.Models;
 using Amazon.SQS.Model;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Amazon.Sqs.Extended.Client;
 
@@ -19,12 +18,12 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
     public AmazonSqsExtendedClient(
         IAmazonSQS amazonSqsToBeExtended,
         IPayloadStore payloadStore,
-        IOptions<ExtendedClientConfiguration> extendedClientConfiguration,
+        ExtendedClientConfiguration extendedClientConfiguration,
         ILogger<AmazonSqsExtendedClient> logger) : base(
         amazonSqsToBeExtended)
     {
         _payloadStore = payloadStore;
-        _extendedClientConfiguration = extendedClientConfiguration.Value;
+        _extendedClientConfiguration = extendedClientConfiguration;
         _logger = logger;
     }
 
@@ -152,7 +151,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
             var entry = request.Entries[i];
             if (!_extendedClientConfiguration.AlwaysThroughS3 && !IsLarge(entry))
                 continue;
-            
+
             (entry.MessageAttributes, entry.MessageBody) =
                 await WritePayloadToS3Async(entry.MessageAttributes, entry.MessageBody, cancellationToken);
 
