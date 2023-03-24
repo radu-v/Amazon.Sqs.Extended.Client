@@ -1,0 +1,17 @@
+<Project>
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)\.sonarlint\amazon.sqs.extended.clientcsharp.ruleset</CodeAnalysisRuleSet>
+        <WarningsAsErrors>CS8602,CS8603</WarningsAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AdditionalFiles
+            Include="$(MSBuildThisFileDirectory)\.sonarlint\amazon.sqs.extended.client\CSharp\SonarLint.xml"
+            Link="SonarLint.xml" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+    </ItemGroup>
+</Project>

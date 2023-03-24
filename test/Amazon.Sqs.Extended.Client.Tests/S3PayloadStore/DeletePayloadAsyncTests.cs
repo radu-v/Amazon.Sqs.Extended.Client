@@ -9,7 +9,7 @@ using NSubstitute.ExceptionExtensions;
 namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
 {
     [TestFixture]
-    public class DeletePayloadAsyncTests
+    public class DeletePayloadAsyncTests : IDisposable
     {
         const string BucketName = "bucket";
         const string S3Key = "test-key";
@@ -47,13 +47,27 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
         {
             // arrange
             _amazonS3Sub.DeleteObjectAsync(string.Empty, string.Empty)
-                .ThrowsAsyncForAnyArgs(ci => new AmazonClientException(""));
+                .ThrowsAsyncForAnyArgs(_ => new AmazonClientException(""));
 
             // act
             Task Act() => _s3PayloadStore.DeletePayloadAsync(_payloadPointer);
 
             // assert
             Assert.ThrowsAsync<AmazonClientException>(Act);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _amazonS3Sub.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

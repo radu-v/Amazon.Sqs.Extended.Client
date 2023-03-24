@@ -77,7 +77,7 @@ public class SendMessageBatchAsyncTests : AmazonSqsExtendedClientTestsBase
             new("2", LargeMessageBody)
         });
 
-        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub,
+        using var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub,
             ExtendedClientConfiguration.WithLargePayloadSupportEnabled().WithAlwaysThroughS3(true), DummyLogger);
 
         // act

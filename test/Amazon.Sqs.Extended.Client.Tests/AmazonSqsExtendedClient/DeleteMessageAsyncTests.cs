@@ -32,7 +32,7 @@ public class DeleteMessageAsyncTests : AmazonSqsExtendedClientTestsBase
             config = config.WithLargePayloadSupportEnabled(isCleanupPayloadEnabled);
         }
 
-        var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, config, DummyLogger);
+        using var client = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, config, DummyLogger);
 
         // act
         await client.DeleteMessageAsync(request);

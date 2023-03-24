@@ -27,6 +27,12 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         _logger = logger;
     }
 
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        _payloadStore.Dispose();
+    }
+
     public override async Task<ChangeMessageVisibilityResponse> ChangeMessageVisibilityAsync(
         ChangeMessageVisibilityRequest request,
         CancellationToken cancellationToken = new())

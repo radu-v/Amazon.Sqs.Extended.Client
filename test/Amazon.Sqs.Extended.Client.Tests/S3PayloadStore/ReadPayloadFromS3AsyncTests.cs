@@ -10,7 +10,7 @@ using NSubstitute.ExceptionExtensions;
 namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
 {
     [TestFixture]
-    public class ReadPayloadFromAsyncTests
+    public class ReadPayloadFromAsyncTests : IDisposable
     {
         const string BucketName = "bucket";
         const string S3Key = "test-key";
@@ -39,7 +39,7 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
         public async Task CallsGetObjectAsyncWithGeneratedKey()
         {
             // arrange
-            var response = new GetObjectResponse();
+            using var response = new GetObjectResponse();
             response.ResponseStream = new MemoryStream();
             _amazonS3Sub.GetObjectAsync(BucketName, S3Key, Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult(response));
@@ -63,6 +63,20 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
 
             // assert
             Assert.ThrowsAsync<AmazonClientException>(Act);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _amazonS3Sub.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

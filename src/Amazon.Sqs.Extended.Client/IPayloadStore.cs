@@ -2,7 +2,7 @@ using Amazon.Sqs.Extended.Client.Models;
 
 namespace Amazon.Sqs.Extended.Client
 {
-    public interface IPayloadStore
+    public interface IPayloadStore : IDisposable
     {
         Task DeletePayloadAsync(PayloadPointer payloadPointer, CancellationToken cancellationToken = new());
 

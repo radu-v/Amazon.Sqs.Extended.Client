@@ -10,7 +10,7 @@ using NSubstitute.ExceptionExtensions;
 namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
 {
     [TestFixture]
-    public class StorePayloadAsyncTests
+    public class StorePayloadAsyncTests : IDisposable
     {
         const string BucketName = "bucket";
         const string S3Key = "test-key";
@@ -75,6 +75,20 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
 
             // assert
             Assert.ThrowsAsync<AmazonClientException>(Act);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _amazonS3Sub.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

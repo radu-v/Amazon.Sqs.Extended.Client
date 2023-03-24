@@ -25,6 +25,11 @@ namespace Amazon.Sqs.Extended.Client
             _payloadStoreConfiguration = configuration;
         }
 
+        public void Dispose()
+        {
+            _amazonS3.Dispose();
+        }
+
         public async Task DeletePayloadAsync(PayloadPointer payloadPointer, CancellationToken cancellationToken = new())
         {
             const string failedToDeleteMessage = "Failed to delete the S3 object which contains the payload";

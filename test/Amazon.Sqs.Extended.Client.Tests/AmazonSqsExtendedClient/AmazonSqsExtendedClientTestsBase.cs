@@ -34,7 +34,7 @@ public class AmazonSqsExtendedClientTestsBase
 
     protected string SmallMessageBody { get; private set; } = null!;
 
-    protected ILogger<Client.AmazonSqsExtendedClient> DummyLogger = null!;
+    protected ILogger<Client.AmazonSqsExtendedClient> DummyLogger { get; private set; } = null!;
 
     [OneTimeSetUp]
     public void OneTimeSetup()

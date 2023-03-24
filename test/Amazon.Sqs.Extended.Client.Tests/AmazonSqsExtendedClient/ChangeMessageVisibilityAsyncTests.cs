@@ -15,8 +15,11 @@ public class ChangeMessageVisibilityAsyncTests : AmazonSqsExtendedClientTestsBas
         var request = new ChangeMessageVisibilityRequest(SqsQueueUrl, receiptHandle, 120);
 
         // act
-        await new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub, ExtendedClientConfiguration,
-                DummyLogger)
+        using var amazonSqsExtendedClient = new Client.AmazonSqsExtendedClient(SqsClientSub, PayloadStoreSub,
+            ExtendedClientConfiguration,
+            DummyLogger);
+
+        await amazonSqsExtendedClient
             .ChangeMessageVisibilityAsync(request);
 
         //assert
