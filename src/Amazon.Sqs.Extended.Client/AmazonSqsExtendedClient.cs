@@ -9,11 +9,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Amazon.Sqs.Extended.Client;
 
+using WritePayloadToS3Result = (Dictionary<string, MessageAttributeValue> updatedMessageAttributes, string updatedMessageBody);
+
 public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
 {
-    readonly ExtendedClientConfiguration _extendedClientConfiguration;
-    readonly IPayloadStore _payloadStore;
-    readonly ILogger<AmazonSqsExtendedClient> _logger;
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = false
+    };
+
+    private readonly ExtendedClientConfiguration _extendedClientConfiguration;
+    private readonly IPayloadStore _payloadStore;
+    private readonly ILogger<AmazonSqsExtendedClient> _logger;
 
     public AmazonSqsExtendedClient(
         IAmazonSQS amazonSqsToBeExtended,
@@ -62,7 +69,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         DeleteMessageRequest request,
         CancellationToken cancellationToken = new())
     {
-        if (_extendedClientConfiguration is {LargePayloadSupport: true, CleanupPayload: true} && IsS3ReceiptHandle(request.ReceiptHandle))
+        if (_extendedClientConfiguration is { LargePayloadSupport: true, CleanupPayload: true } && IsS3ReceiptHandle(request.ReceiptHandle))
         {
             var payloadS3Pointer = GetMessagePointerFromS3ReceiptHandle(request.ReceiptHandle);
             await _payloadStore.DeletePayloadAsync(payloadS3Pointer, cancellationToken);
@@ -79,7 +86,8 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
     {
         foreach (var entry in request.Entries)
         {
-            if (_extendedClientConfiguration is {LargePayloadSupport: true, CleanupPayload: true} && IsS3ReceiptHandle(entry.ReceiptHandle))
+            if (_extendedClientConfiguration is { LargePayloadSupport: true, CleanupPayload: true } &&
+                IsS3ReceiptHandle(entry.ReceiptHandle))
             {
                 var payloadS3Pointer = GetMessagePointerFromS3ReceiptHandle(entry.ReceiptHandle);
                 await _payloadStore.DeletePayloadAsync(payloadS3Pointer, cancellationToken);
@@ -106,13 +114,27 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         }
 
         var receiveMessageResponse = await base.ReceiveMessageAsync(request, cancellationToken);
-        foreach (var message in receiveMessageResponse.Messages.Where(message =>
-                     message.MessageAttributes.ContainsKey(SqsExtendedClientConstants.ReservedAttributeName)))
+
+        var messagesWithPayload = receiveMessageResponse.Messages.Where(message =>
+            message.MessageAttributes.ContainsKey(SqsExtendedClientConstants.ReservedAttributeName))
+            .ToList();
+
+        foreach (var message in messagesWithPayload)
         {
             if (!TryGetMessagePointerFromMessageBody(message.Body, out var payloadS3Pointer))
                 continue;
 
-            message.Body = await _payloadStore.ReadPayloadAsync(payloadS3Pointer, cancellationToken);
+            try
+            {
+                message.Body = await _payloadStore.ReadPayloadAsync(payloadS3Pointer, cancellationToken);
+            }
+            catch (AmazonClientException e)
+            {
+                receiveMessageResponse.Messages.Remove(message);
+                _logger.LogError("Failed to read payload for message Id {0}: {1}", message.MessageId, e.GetBaseException().Message);
+                continue;
+            }
+
             message.ReceiptHandle = EmbedS3PointerInReceiptHandle(message.ReceiptHandle, payloadS3Pointer);
             message.MessageAttributes.Remove(SqsExtendedClientConstants.ReservedAttributeName);
         }
@@ -134,13 +156,30 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
             return await base.SendMessageAsync(request, cancellationToken);
         }
 
-        if (_extendedClientConfiguration.AlwaysThroughS3 || IsLarge(request))
+        if (!_extendedClientConfiguration.AlwaysThroughS3 && !IsLarge(request))
         {
-            (request.MessageAttributes, request.MessageBody) =
-                await WritePayloadToS3Async(request.MessageAttributes, request.MessageBody, cancellationToken);
+            return await base.SendMessageAsync(request, cancellationToken);
         }
 
-        return await base.SendMessageAsync(request, cancellationToken);
+        var (messageAttributes, messageBody) =
+            await WritePayloadToS3Async(request.MessageAttributes, request.MessageBody, cancellationToken);
+
+        var updatedRequest = CloneRequestWithOverrides(request, messageAttributes, messageBody);
+
+        return await base.SendMessageAsync(updatedRequest, cancellationToken);
+    }
+
+    private static SendMessageRequest CloneRequestWithOverrides(SendMessageRequest request,
+        Dictionary<string, MessageAttributeValue> messageAttributes, string messageBody)
+    {
+        return new SendMessageRequest(request.QueueUrl, messageBody)
+        {
+            MessageAttributes = messageAttributes,
+            DelaySeconds = request.DelaySeconds,
+            MessageDeduplicationId = request.MessageDeduplicationId,
+            MessageGroupId = request.MessageGroupId,
+            MessageSystemAttributes = request.MessageSystemAttributes,
+        };
     }
 
     public override async Task<SendMessageBatchResponse> SendMessageBatchAsync(
@@ -167,7 +206,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         return await base.SendMessageBatchAsync(request, cancellationToken);
     }
 
-    static void CheckMessageAttributes(IDictionary<string, MessageAttributeValue> messageAttributes, long payloadSizeThreshold)
+    private static void CheckMessageAttributes(IDictionary<string, MessageAttributeValue> messageAttributes, long payloadSizeThreshold)
     {
         var msgAttributesSize = GetMessageAttributesSize(messageAttributes);
         if (msgAttributesSize > payloadSizeThreshold)
@@ -190,7 +229,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         }
     }
 
-    bool IsLarge(SendMessageRequest request)
+    private bool IsLarge(SendMessageRequest request)
     {
         var msgAttributesSize = GetMessageAttributesSize(request.MessageAttributes);
         var msgBodySize = Encoding.UTF8.GetByteCount(request.MessageBody);
@@ -198,7 +237,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         return totalMsgSize > _extendedClientConfiguration.PayloadSizeThreshold;
     }
 
-    bool IsLarge(SendMessageBatchRequestEntry request)
+    private bool IsLarge(SendMessageBatchRequestEntry request)
     {
         var msgAttributesSize = GetMessageAttributesSize(request.MessageAttributes);
         var msgBodySize = Encoding.UTF8.GetByteCount(request.MessageBody);
@@ -206,7 +245,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         return totalMsgSize > _extendedClientConfiguration.PayloadSizeThreshold;
     }
 
-    static long GetMessageAttributesSize(IDictionary<string, MessageAttributeValue> messageAttributes)
+    private static long GetMessageAttributesSize(IDictionary<string, MessageAttributeValue> messageAttributes)
     {
         var totalMessageAttributesSize = 0L;
         foreach (var attribute in messageAttributes)
@@ -232,13 +271,13 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         return totalMessageAttributesSize;
     }
 
-    static bool IsS3ReceiptHandle(string receiptHandle)
+    private static bool IsS3ReceiptHandle(string receiptHandle)
     {
         return receiptHandle.Contains(SqsExtendedClientConstants.S3BucketNameMarker)
-            && receiptHandle.Contains(SqsExtendedClientConstants.S3KeyMarker);
+               && receiptHandle.Contains(SqsExtendedClientConstants.S3KeyMarker);
     }
 
-    static string GetOriginalReceiptHandle(string receiptHandle)
+    private static string GetOriginalReceiptHandle(string receiptHandle)
     {
         var s3KeyMarkerFirst =
             receiptHandle.IndexOf(SqsExtendedClientConstants.S3KeyMarker, StringComparison.Ordinal);
@@ -250,7 +289,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         return span[(s3KeyMarkerSecond + SqsExtendedClientConstants.S3KeyMarker.Length)..].ToString();
     }
 
-    static PayloadPointer GetMessagePointerFromS3ReceiptHandle(string receiptHandle)
+    private static PayloadPointer GetMessagePointerFromS3ReceiptHandle(string receiptHandle)
     {
         var s3MsgBucketName =
             GetFromReceiptHandleByMarker(receiptHandle, SqsExtendedClientConstants.S3BucketNameMarker);
@@ -259,11 +298,11 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         return new PayloadPointer(s3MsgBucketName, s3MsgKey);
     }
 
-    bool TryGetMessagePointerFromMessageBody(string messageBody, out PayloadPointer payloadPointer)
+    private bool TryGetMessagePointerFromMessageBody(string messageBody, out PayloadPointer payloadPointer)
     {
         try
         {
-            payloadPointer = JsonSerializer.Deserialize<PayloadPointer>(messageBody)!;
+            payloadPointer = JsonSerializer.Deserialize<PayloadPointer>(messageBody, JsonSerializerOptions);
             return true;
         }
         catch (Exception e)
@@ -275,7 +314,7 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
         }
     }
 
-    static string EmbedS3PointerInReceiptHandle(string receiptHandle, PayloadPointer payloadPointer)
+    private static string EmbedS3PointerInReceiptHandle(string receiptHandle, PayloadPointer payloadPointer)
     {
         return new StringBuilder(SqsExtendedClientConstants.S3BucketNameMarker)
             .Append(payloadPointer.BucketName)
@@ -287,28 +326,26 @@ public sealed class AmazonSqsExtendedClient : AmazonSqsExtendedClientBase
             .ToString();
     }
 
-    static string GetFromReceiptHandleByMarker(string receiptHandle, string marker)
+    private static string GetFromReceiptHandleByMarker(string receiptHandle, string marker)
     {
         var valueStart = receiptHandle.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
         var valueEnd = receiptHandle.IndexOf(marker, valueStart, StringComparison.Ordinal);
         return receiptHandle.Substring(valueStart, valueEnd - valueStart);
     }
 
-    async Task<(Dictionary<string, MessageAttributeValue> updatedMessageAttributes, string updatedMessageBody)>
-        WritePayloadToS3Async(
-            IDictionary<string, MessageAttributeValue> messageAttributes,
-            string messageBody,
-            CancellationToken cancellationToken)
+    private async Task<WritePayloadToS3Result> WritePayloadToS3Async(
+        IDictionary<string, MessageAttributeValue> messageAttributes,
+        string messageBody,
+        CancellationToken cancellationToken)
     {
         CheckMessageAttributes(messageAttributes, _extendedClientConfiguration.PayloadSizeThreshold);
 
         var messageContentSize = Encoding.UTF8.GetByteCount(messageBody);
-
         var updatedMessageAttributes = messageAttributes.WithExtendedPayloadSize(messageContentSize);
 
         var largeMessagePointer = await _payloadStore.StorePayloadAsync(messageBody, cancellationToken);
-        var updatedMessageBody =
-            JsonSerializer.Serialize(largeMessagePointer, new JsonSerializerOptions {WriteIndented = false});
+        var updatedMessageBody = JsonSerializer.Serialize(largeMessagePointer, JsonSerializerOptions);
+
         return (updatedMessageAttributes, updatedMessageBody);
     }
 }

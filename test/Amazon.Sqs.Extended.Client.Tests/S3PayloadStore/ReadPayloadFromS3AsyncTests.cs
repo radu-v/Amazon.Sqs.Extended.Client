@@ -12,14 +12,14 @@ namespace Amazon.Sqs.Extended.Client.Tests.S3PayloadStore
     [TestFixture]
     public class ReadPayloadFromAsyncTests : IDisposable
     {
-        const string BucketName = "bucket";
-        const string S3Key = "test-key";
+        private const string BucketName = "bucket";
+        private const string S3Key = "test-key";
 
-        Client.S3PayloadStore _s3PayloadStore = null!;
-        IAmazonS3 _amazonS3Sub = null!;
-        IPayloadStoreKeyProvider _payloadStoreKeyProviderSub = null!;
-        PayloadStoreConfiguration _payloadStoreConfiguration = null!;
-        PayloadPointer _payloadPointer;
+        private Client.S3PayloadStore _s3PayloadStore = null!;
+        private IAmazonS3 _amazonS3Sub = null!;
+        private IPayloadStoreKeyProvider _payloadStoreKeyProviderSub = null!;
+        private PayloadStoreConfiguration _payloadStoreConfiguration = null!;
+        private PayloadPointer _payloadPointer;
 
         [SetUp]
         public void SetUp()

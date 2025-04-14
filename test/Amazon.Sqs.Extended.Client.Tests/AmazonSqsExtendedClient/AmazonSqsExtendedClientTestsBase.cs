@@ -65,7 +65,16 @@ public class AmazonSqsExtendedClientTestsBase
                 DummyLogger);
     }
 
-    static string GenerateStringWithLength(int messageLength) => new('Q', messageLength);
+    [TearDown]
+    public void Teardown()
+    {
+        ExtendedSqsWithLargePayloadDisabled.Dispose();
+        ExtendedSqsWithLargePayloadEnabled.Dispose();
+        SqsClientSub.Dispose();
+        PayloadStoreSub.Dispose();
+    }
+
+    private static string GenerateStringWithLength(int messageLength) => new('Q', messageLength);
 
     protected static string GenerateReceiptHandle(
         bool isS3ReceiptHandle,

@@ -9,10 +9,10 @@ namespace Amazon.Sqs.Extended.Client
 {
     public sealed class S3PayloadStore : IPayloadStore
     {
-        readonly IAmazonS3 _amazonS3;
-        readonly IPayloadStoreKeyProvider _payloadStoreKeyProvider;
-        readonly ILogger<S3PayloadStore> _logger;
-        readonly PayloadStoreConfiguration _payloadStoreConfiguration;
+        private readonly IAmazonS3 _amazonS3;
+        private readonly IPayloadStoreKeyProvider _payloadStoreKeyProvider;
+        private readonly ILogger<S3PayloadStore> _logger;
+        private readonly PayloadStoreConfiguration _payloadStoreConfiguration;
 
         public S3PayloadStore(IAmazonS3 amazonS3,
             IPayloadStoreKeyProvider payloadStoreKeyProvider,
@@ -41,7 +41,7 @@ namespace Amazon.Sqs.Extended.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, failedToDeleteMessage);
+                _logger.LogError(failedToDeleteMessage);
                 throw new AmazonClientException(failedToDeleteMessage, e);
             }
         }
@@ -61,7 +61,7 @@ namespace Amazon.Sqs.Extended.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, failedToReadMessage);
+                _logger.LogError(failedToReadMessage);
                 throw new AmazonClientException(failedToReadMessage, e);
             }
         }
@@ -96,7 +96,7 @@ namespace Amazon.Sqs.Extended.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, failedToWriteMessage);
+                _logger.LogError(failedToWriteMessage);
                 throw new AmazonClientException(failedToWriteMessage, e);
             }
         }

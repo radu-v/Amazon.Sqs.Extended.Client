@@ -2,6 +2,6 @@
    <Import Project="version.props" />
 
    <PropertyGroup>
-      <LangVersion>preview</LangVersion>
+      <LangVersion>latest</LangVersion>
    </PropertyGroup>
 </Project>

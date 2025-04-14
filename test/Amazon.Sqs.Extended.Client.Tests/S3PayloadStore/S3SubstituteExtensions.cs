@@ -35,7 +35,7 @@ public static class S3SubstituteExtensions
         Assert.That(calls, Is.Empty);
     }
 
-    static IEnumerable<ICall> GetReceivedGetObjectAsyncCalls(IAmazonS3 amazonS3Substitute, string s3BucketName, string s3Key)
+    private static IEnumerable<ICall> GetReceivedGetObjectAsyncCalls(IAmazonS3 amazonS3Substitute, string s3BucketName, string s3Key)
     {
         return amazonS3Substitute.ReceivedCalls()
             .Where(c => c.GetMethodInfo().Name == nameof(IAmazonS3.GetObjectAsync))
